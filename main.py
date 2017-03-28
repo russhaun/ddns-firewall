@@ -1,22 +1,25 @@
 from time import sleep
 from socket import gethostbyname
-from subprocess import check_output
+from subprocess import check_output, CalledProcessError
 
 LOG_FILE = 'logs.txt'
 WHITELIST_FILE = 'whitelist.txt' # a list of whitelisted IP_ADDR/DDNS PORT - separated by whitespace on each line
-UPDATE_INTERVAL = 12 * 60 * 60 # 12 HRLY
+UPDATE_INTERVAL = 1 * 60 * 60 # 1 HRLY
 RULE_NAME_TEMPLATE = 'CUSTOM RULE 9834 %d-%d'
 
 def get_rule_name(major_index, minor_index):
     return RULE_NAME_TEMPLATE % (major_index, minor_index)
 
 def log(cmd, output):
-    entry = "[LOG]: Command '%s' was executed with output '%s'\n\n" % (cmd, output)
+    entry = "[CMD]: %s\n[OUT]: %s\n\n" % (cmd, output)
     with open(LOG_FILE, 'a+') as f:
         f.write(entry)
 
 def exec_cmd(cmd, should_log):
-    output = check_output(cmd, shell=True)
+    try:
+        output = check_output(cmd, shell=True)
+    except CalledProcessError as e:
+        output = e.output
     if should_log:
         log(cmd, output)
     return output
@@ -38,7 +41,7 @@ def delete_exception(major_index, minor_index):
 def add_exception(exception, major_index, minor_index):
     ip_addr, port = exception
     rule_name = get_rule_name(major_index, minor_index)
-    cmd = 'netsh advfirewall firewall add rule name="%s" dir=in action=allow remoteip=%s localport=%s' % (get_rule_name(major_index, minor_index), ip_addr, port)
+    cmd = 'netsh advfirewall firewall add rule name="%s" dir=in action=allow remoteip=%s protocol=tcp localport=%s' % (get_rule_name(major_index, minor_index), ip_addr, port)
     exec_cmd(cmd, True)
 
 def clear_old_rules(major_index):
@@ -49,8 +52,11 @@ def clear_old_rules(major_index):
             return
 
 def get_whitelist():
-    with open(WHITELIST_FILE, 'r+') as f:
-        return map(lambda line: line.split(), f.readlines())
+    try:
+        with open(WHITELIST_FILE, 'r+') as f:
+            return map(lambda line: line.split(), f.readlines())
+    except:
+        return []
 
 def get_resolved_list(raw_exceptions):
         return map(lambda exception: (gethostbyname(exception[0]), exception[1]), raw_exceptions)
@@ -64,7 +70,7 @@ while True:
     raw_exceptions = get_whitelist()
     resolved_exceptions = get_resolved_list(raw_exceptions)
     for minor_index in range(len(resolved_exceptions)):
-        add_exception(resolved_exceptions[i], new_major_index, minor_index)
+        add_exception(resolved_exceptions[minor_index], new_major_index, minor_index)
 
     # clear outdated exceptions
     clear_old_rules(old_major_index)
