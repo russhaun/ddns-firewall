@@ -1,4 +1,13 @@
-# ddns-firewall
+# About ddns-firewall
+
+Need to create firewall rules for hosts which do not have static IP addresses? This program allows you to do so if you're able to assign DDNSes to each of those hosts. This is how the program operates:
+- At each time interval defined by you (e.g. 1 hourly), it will:
+    1. Read your list of whitelisted hosts and ports
+    2. Resolve those whitelisted hostnames to IP addresses
+    3. Add those whitelisted IP addresses and ports to Windows Firewall
+    4. Remove the outdated rules
+    
+That's it! It's a bit hack-ish but unfortunately I could not find anything better for free at this moment.
 
 ## Build
 
